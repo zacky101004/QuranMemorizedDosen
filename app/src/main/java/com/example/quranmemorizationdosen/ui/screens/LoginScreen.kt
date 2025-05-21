@@ -1,9 +1,5 @@
 package com.example.quranmemorizationdosen.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,46 +9,36 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.quranmemorizationdosen.R
 import com.example.quranmemorizationdosen.data.api.RetrofitClient
-import com.example.quranmemorizationdosen.ui.theme.IslamicGold
+import com.example.quranmemorizationdosen.TokenManager
 import com.example.quranmemorizationdosen.ui.theme.IslamicGreen
 import com.example.quranmemorizationdosen.ui.theme.IslamicWhite
-import com.example.quranmemorizationdosen.ui.theme.QuranMemorizationDosenTheme
-import com.example.quranmemorizationdosen.TokenManager
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onLoginSuccess: (String) -> Unit = {}) {
+fun LoginScreen(onLoginSuccess: () -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val apiService = RetrofitClient.apiService
     val context = LocalContext.current
     val tokenManager = remember { TokenManager(context) }
-
-    val clientId = "setoran-mobile-dev" // Ganti dengan client_id Anda
-    val clientSecret = "aqJp3xnXKudgC7RMOshEQP7ZoVKWzoSl" // Ganti dengan client_secret Anda
-    val grantType = "password"
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.LightGray, Color.DarkGray)
+                    colors = listOf(IslamicWhite, IslamicGreen.copy(alpha = 0.1f))
                 )
             )
     ) {
@@ -61,63 +47,41 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit = {}) {
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
                 .padding(top = 64.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.Top,
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo
             Image(
                 painter = painterResource(id = R.drawable.img),
                 contentDescription = "App Logo",
-                modifier = Modifier
-                    .size(120.dp)
-                    .padding(bottom = 16.dp)
+                modifier = Modifier.size(120.dp)
             )
 
-            // Judul dan Subjudul
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text(
-                    text = "QuranMemorizationDosen",
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 28.sp),
-                    color = IslamicGreen,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text(
-                    text = "Login Dosen",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
-                    color = IslamicGold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-            }
+            Text(
+                text = "Quran Memorization Dosen",
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 28.sp),
+                color = IslamicGreen,
+                modifier = Modifier.padding(top = 16.dp)
+            )
 
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                    .padding(top = 32.dp),
+                shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
                         label = { Text("Username") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = IslamicGreen,
-                            unfocusedBorderColor = IslamicGold
+                            unfocusedBorderColor = Color.Gray
                         )
                     )
 
@@ -129,23 +93,18 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit = {}) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(top = 16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = IslamicGreen,
-                            unfocusedBorderColor = IslamicGold
+                            unfocusedBorderColor = Color.Gray
                         )
                     )
 
-                    AnimatedVisibility(
-                        visible = showError,
-                        enter = fadeIn(animationSpec = tween(500)),
-                        exit = fadeOut(animationSpec = tween(500))
-                    ) {
+                    errorMessage?.let {
                         Text(
-                            text = "Invalid credentials or network error",
+                            text = it,
                             color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
 
@@ -153,51 +112,42 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit = {}) {
                         onClick = {
                             scope.launch {
                                 try {
-                                    val response = apiService.login(
-                                        clientId = clientId,
-                                        clientSecret = clientSecret,
-                                        grantType = grantType,
+                                    val response = RetrofitClient.kcApiService.login(
+                                        clientId = "setoran-mobile-dev",
+                                        clientSecret = "aqJp3xnXKudgC7RMOshEQP7ZoVKWzoSl",
+                                        grantType = "password",
                                         username = username,
                                         password = password,
                                         scope = "openid profile email"
                                     )
                                     if (response.isSuccessful) {
-                                        response.body()?.let { authResponse ->
+                                        response.body()?.let { auth ->
                                             tokenManager.saveTokens(
-                                                accessToken = authResponse.access_token,
-                                                refreshToken = authResponse.refresh_token,
-                                                idToken = authResponse.id_token
+                                                auth.access_token,
+                                                auth.refresh_token,
+                                                auth.id_token
                                             )
-                                            onLoginSuccess(username)
-                                            showError = false
+                                            onLoginSuccess()
                                         }
                                     } else {
-                                        showError = true
+                                        errorMessage = "Login gagal: ${response.message()}"
                                     }
                                 } catch (e: Exception) {
-                                    showError = true
-                                    e.printStackTrace()
+                                    errorMessage = "Kesalahan: ${e.message}"
                                 }
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .height(50.dp)
+                            .padding(top = 24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = IslamicGreen),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Login", color = IslamicWhite, style = MaterialTheme.typography.labelLarge)
+                        Text("Login", color = IslamicWhite)
                     }
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewLoginScreen() {
-    QuranMemorizationDosenTheme {
-        LoginScreen()
     }
 }

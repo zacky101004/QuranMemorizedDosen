@@ -1,125 +1,139 @@
 package com.example.quranmemorizationdosen.ui.screens
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.quranmemorizationdosen.ui.theme.IslamicGold
-import com.example.quranmemorizationdosen.ui.theme.IslamicGreen
-import com.example.quranmemorizationdosen.ui.theme.IslamicWhite
-import com.example.quranmemorizationdosen.ui.theme.QuranMemorizationDosenTheme
+import androidx.navigation.NavController
+import com.example.quranmemorizationdosen.TokenManager
+import com.example.quranmemorizationdosen.data.api.RetrofitClient
+import com.example.quranmemorizationdosen.data.api.DosenResponse
+import com.example.quranmemorizationdosen.ui.navigation.BottomNavigationBar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(username: String, onLogout: () -> Unit) {
+fun DashboardScreen(navController: NavController, onLogout: () -> Unit) {
+    val context = LocalContext.current
+    val tokenManager = TokenManager(context)
+    val scope = rememberCoroutineScope()
+    var dosenResponse by remember { mutableStateOf<DosenResponse?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val token = tokenManager.getAccessToken()
+                if (token != null) {
+                    val response = RetrofitClient.apiService.getDosenInfo("Bearer $token")
+                    if (response.isSuccessful) {
+                        dosenResponse = response.body()
+                    } else {
+                        errorMessage = "Gagal mengambil data: ${response.message()}"
+                    }
+                } else {
+                    errorMessage = "Token tidak ditemukan"
+                }
+            } catch (e: Exception) {
+                errorMessage = "Kesalahan: ${e.message}"
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard Dosen", fontSize = 22.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = IslamicWhite,
-                    navigationIconContentColor = IslamicWhite
-                ),
-                modifier = Modifier
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(IslamicGreen, IslamicGold)
-                        )
-                    ),
+                title = { Text("Dashboard Dosen") },
                 actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = "Logout",
-                            tint = IslamicWhite
-                        )
+                    TextButton(onClick = {
+                        tokenManager.clearTokens()
+                        onLogout()
+                    }) {
+                        Text("Logout", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             )
+        },
+        bottomBar = {
+            BottomNavigationBar(navController)
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.LightGray, Color.DarkGray)
-                    )
-                )
                 .padding(paddingValues)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                    Column(
+            when {
+                dosenResponse != null -> {
+                    LazyColumn(
                         modifier = Modifier
+                            .fillMaxSize()
                             .padding(16.dp)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "Selamat Datang, $username!",
-                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 26.sp),
-                            color = IslamicGreen,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        Text(
-                            text = "API Berhasil Terhubung!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = IslamicGreen,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Text(
-                            text = "Nama Dosen: Muhammad Fikri",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = IslamicGreen,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Text(
-                            text = "Jumlah Mahasiswa: 25 (Dummy)",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = IslamicGreen,
-                            textAlign = TextAlign.Center
-                        )
+                        item {
+                            Text(
+                                text = "Selamat datang, ${dosenResponse!!.data.nama}",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Text(
+                                text = "NIP: ${dosenResponse!!.data.nip}",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "Email: ${dosenResponse!!.data.email}",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Daftar Mahasiswa Bimbingan",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        items(dosenResponse!!.data.info_mahasiswa_pa.daftar_mahasiswa) { mahasiswa ->
+                            MahasiswaCard(mahasiswa) {
+                                navController.navigate("lihat_setoran/${mahasiswa.nim}")
+                            }
+                        }
                     }
+                }
+                errorMessage != null -> {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun PreviewDashboardScreen() {
-    QuranMemorizationDosenTheme {
-        DashboardScreen(username = "Muhammad Fikri", onLogout = {})
+fun MahasiswaCard(mahasiswa: com.example.quranmemorizationdosen.data.api.Mahasiswa, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = mahasiswa.nama, style = MaterialTheme.typography.bodyLarge)
+            Text(text = "NIM: ${mahasiswa.nim}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "Angkatan: ${mahasiswa.angkatan}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = "Progres: ${mahasiswa.info_setoran.persentase_progres_setor}%",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }

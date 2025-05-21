@@ -1,42 +1,32 @@
 package com.example.quranmemorizationdosen.data.api
 
-import com.example.quranmemorizationdosen.TokenManager
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    private const val BASE_URL = "https://id.tif.uin-suska.ac.id" // Ganti dengan base URL API Anda
+    private const val KC_BASE_URL = "https://id.tif.uin-suska.ac.id"
+    private const val API_BASE_URL = "https://api.tif.uin-suska.ac.id/setoran-dev/v1/"
 
-    fun getApiService(tokenManager: TokenManager): ApiService {
-        val authInterceptor = Interceptor { chain ->
-            val originalRequest = chain.request()
-            val accessToken = tokenManager.getAccessToken() ?: ""
-            val modifiedRequest = originalRequest.newBuilder()
-                .addHeader("Authorization", "Bearer $accessToken")
-                .build()
-            chain.proceed(modifiedRequest)
-        }
+    private val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+    private val client = OkHttpClient.Builder().addInterceptor(logging).build()
 
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor(authInterceptor)
-            .build()
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(okHttpClient)
+    val kcApiService: ApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(KC_BASE_URL)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-
-        return retrofit.create(ApiService::class.java)
+            .create(ApiService::class.java)
     }
 
     val apiService: ApiService by lazy {
-        val retrofit = Retrofit.Builder()
-            .baseUrl(BASE_URL)
+        Retrofit.Builder()
+            .baseUrl(API_BASE_URL)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-        retrofit.create(ApiService::class.java)
+            .create(ApiService::class.java)
     }
 }
